@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 import os
 from database import engine, Base
 import models
-from routers import prospects, appointments, pipeline, ai
+from routers import prospects, appointments, pipeline, ai, cases
 
 Base.metadata.create_all(bind=engine)
 
@@ -27,6 +27,7 @@ app.include_router(prospects.router)
 app.include_router(appointments.router)
 app.include_router(pipeline.router)
 app.include_router(ai.router)
+app.include_router(cases.router)
 
 
 @app.get("/api/health")

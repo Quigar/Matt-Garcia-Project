@@ -1,15 +1,17 @@
 import React, { useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, Calendar, TrendingUp, Bot, Shield } from 'lucide-react'
+import { LayoutDashboard, Users, Calendar, TrendingUp, Bot, Shield, FileText } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Prospects from './pages/Prospects'
 import Appointments from './pages/Appointments'
 import Pipeline from './pages/Pipeline'
 import ProspectDetail from './pages/ProspectDetail'
+import Cases from './pages/Cases'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/prospects', icon: Users, label: 'Prospects' },
+  { to: '/prospects', icon: Users, label: 'Life Agents' },
+  { to: '/cases', icon: FileText, label: 'Pending Cases' },
   { to: '/appointments', icon: Calendar, label: 'Appointments' },
   { to: '/pipeline', icon: TrendingUp, label: 'Pipeline' },
 ]
@@ -69,6 +71,7 @@ export default function App() {
             <Route path="/prospects/:id" element={<ProspectDetail />} />
             <Route path="/appointments" element={<Appointments />} />
             <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/cases" element={<Cases />} />
           </Routes>
         </main>
       </div>

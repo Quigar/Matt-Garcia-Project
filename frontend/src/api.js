@@ -36,3 +36,15 @@ export const ai = {
   outreach: (data) => api.post('/ai/outreach', data).then(r => r.data),
   outreachLogs: (prospectId) => api.get(`/ai/outreach/logs/${prospectId}`).then(r => r.data),
 }
+
+export const cases = {
+  list: (params) => api.get('/cases', { params }).then(r => r.data),
+  get: (id) => api.get(`/cases/${id}`).then(r => r.data),
+  create: (data) => api.post('/cases', data).then(r => r.data),
+  update: (id, data) => api.patch(`/cases/${id}`, data).then(r => r.data),
+  delete: (id) => api.delete(`/cases/${id}`),
+  metrics: () => api.get('/cases/metrics').then(r => r.data),
+  analyze: (id) => api.post(`/cases/${id}/analyze`).then(r => r.data),
+  followup: (id) => api.post(`/cases/${id}/followup`).then(r => r.data),
+  agentSummary: (prospectId) => api.get(`/cases/agent/${prospectId}/summary`).then(r => r.data),
+}

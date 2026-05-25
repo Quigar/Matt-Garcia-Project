@@ -70,6 +70,7 @@ class Prospect(Base):
     pipeline_entries = relationship("PipelineEntry", back_populates="prospect")
     outreach_logs = relationship("OutreachLog", back_populates="prospect")
     qualification_sessions = relationship("QualificationSession", back_populates="prospect")
+    pending_cases = relationship("PendingCase", back_populates="prospect")
 
 
 class Employee(Base):
@@ -138,6 +139,57 @@ class OutreachLog(Base):
     replied = Column(Boolean, default=False)
 
     prospect = relationship("Prospect", back_populates="outreach_logs")
+
+
+class CaseStatus(str, enum.Enum):
+    submitted = "submitted"       # app submitted to carrier
+    pending = "pending"           # with underwriter
+    requirements = "requirements" # carrier needs more info
+    approved = "approved"         # UW approved, awaiting delivery
+    delivery = "delivery"         # policy delivered, awaiting client signature
+    placed = "placed"             # in-force, done
+    nto = "nto"                   # not taken out by client
+    declined = "declined"         # UW declined
+    postponed = "postponed"       # UW postponed
+
+
+class PendingCase(Base):
+    __tablename__ = "pending_cases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    prospect_id = Column(Integer, ForeignKey("prospects.id"))  # the agent who owns the case
+
+    # Client / insured info
+    client_name = Column(String, nullable=False)
+    client_age = Column(Integer)
+
+    # Policy details
+    carrier = Column(String, nullable=False)
+    product_type = Column(String)   # term, iul, whole_life, final_expense, annuity, etc.
+    face_amount = Column(Float)     # death benefit / policy face value
+    annual_premium = Column(Float)  # estimated annual premium
+
+    # Case tracking
+    carrier_case_number = Column(String)
+    status = Column(Enum(CaseStatus), default=CaseStatus.submitted)
+    submitted_at = Column(DateTime(timezone=True))
+    status_updated_at = Column(DateTime(timezone=True), server_default=func.now())
+    next_followup_date = Column(DateTime(timezone=True))
+
+    # Requirements outstanding (what carrier is waiting for)
+    requirements_outstanding = Column(Text)  # free-text list
+
+    # AI-generated fields
+    ai_risk_level = Column(String)   # low | medium | high | critical
+    ai_risk_reason = Column(Text)
+    ai_recommended_action = Column(Text)
+    ai_analyzed_at = Column(DateTime(timezone=True))
+
+    notes = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    prospect = relationship("Prospect", back_populates="pending_cases")
 
 
 class QualificationSession(Base):

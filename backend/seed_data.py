@@ -195,9 +195,213 @@ for prospect_id, employee_id, title, scheduled_at, appt_type in appt_data:
     db.add(appt)
 
 db.commit()
+
+# ---------------------------------------------------------------------------
+# Pending Cases — realistic life cases across all statuses
+# ---------------------------------------------------------------------------
+from datetime import timezone
+
+def past(days):
+    return datetime.now(timezone.utc) - timedelta(days=days)
+
+pending_cases_data = [
+    # Kevin Marsh (IUL agent) — 3 cases
+    {
+        "prospect_id": created_agents[0].id,
+        "client_name": "Robert Simmons",
+        "client_age": 48,
+        "carrier": "Pacific Life",
+        "product_type": "IUL",
+        "face_amount": 1_000_000,
+        "annual_premium": 14_200,
+        "carrier_case_number": "PL-2024-00841",
+        "status": models.CaseStatus.requirements,
+        "submitted_at": past(22),
+        "status_updated_at": past(11),  # stale — over 7-day threshold for requirements
+        "requirements_outstanding": "APS from cardiologist, 2019 blood panel results",
+        "notes": "Client had a minor cardiac event in 2019. Should approve substandard.",
+        "ai_risk_level": "high",
+        "ai_risk_reason": "Requirements outstanding for 11 days — carrier may close file.",
+        "ai_recommended_action": "Call Pacific Life UW directly and confirm APS was received. Follow up with client's physician office.",
+    },
+    {
+        "prospect_id": created_agents[0].id,
+        "client_name": "Diana Forsythe",
+        "client_age": 39,
+        "carrier": "North American",
+        "product_type": "IUL",
+        "face_amount": 500_000,
+        "annual_premium": 8_400,
+        "carrier_case_number": "NA-2024-05512",
+        "status": models.CaseStatus.pending,
+        "submitted_at": past(12),
+        "status_updated_at": past(12),
+        "requirements_outstanding": None,
+        "notes": "Preferred Plus health class expected. Clean application.",
+        "ai_risk_level": "low",
+        "ai_risk_reason": "12 days in pending — within normal underwriting window for North American.",
+        "ai_recommended_action": "Check status at 21-day mark. No action needed yet.",
+    },
+    {
+        "prospect_id": created_agents[0].id,
+        "client_name": "Marcus Webb",
+        "client_age": 55,
+        "carrier": "Nationwide",
+        "product_type": "IUL",
+        "face_amount": 750_000,
+        "annual_premium": 18_600,
+        "carrier_case_number": "NW-2024-07741",
+        "status": models.CaseStatus.delivery,
+        "submitted_at": past(45),
+        "status_updated_at": past(9),  # stale — over 7-day delivery threshold
+        "requirements_outstanding": None,
+        "next_followup_date": past(2),
+        "notes": "Policy delivered 9 days ago. Client has not returned signed delivery receipt.",
+        "ai_risk_level": "critical",
+        "ai_risk_reason": "Policy in delivery for 9 days without acceptance — client going cold.",
+        "ai_recommended_action": "Call client today. Offer to meet in person to review policy benefits and get signature.",
+    },
+    # Tamara Reyes (annuity agent) — 2 cases
+    {
+        "prospect_id": created_agents[1].id,
+        "client_name": "Harold Ostrowski",
+        "client_age": 67,
+        "carrier": "Allianz",
+        "product_type": "FIA (Annuity)",
+        "face_amount": None,
+        "annual_premium": 85_000,
+        "carrier_case_number": "ALZ-2024-11204",
+        "status": models.CaseStatus.requirements,
+        "submitted_at": past(18),
+        "status_updated_at": past(4),
+        "requirements_outstanding": "Suitability interview recording, bank transfer confirmation",
+        "notes": "1035 exchange from MetLife. Client is 67, Allianz requires recorded suitability call.",
+        "ai_risk_level": "medium",
+        "ai_risk_reason": "Suitability interview not yet scheduled — 4 days in requirements.",
+        "ai_recommended_action": "Schedule suitability call with client this week before Allianz flags the transfer.",
+    },
+    {
+        "prospect_id": created_agents[1].id,
+        "client_name": "Sylvia Chambers",
+        "client_age": 71,
+        "carrier": "Global Atlantic",
+        "product_type": "MYGA (Annuity)",
+        "face_amount": None,
+        "annual_premium": 120_000,
+        "carrier_case_number": "GA-2024-03317",
+        "status": models.CaseStatus.placed,
+        "submitted_at": past(60),
+        "status_updated_at": past(5),
+        "requirements_outstanding": None,
+        "notes": "Issued and client funded. Premium of $120K received. Great case.",
+        "ai_risk_level": "low",
+        "ai_risk_reason": "Case placed and in-force.",
+        "ai_recommended_action": "Schedule 30-day policy review call with client.",
+    },
+    # Darnell Washington (final expense) — 3 cases
+    {
+        "prospect_id": created_agents[2].id,
+        "client_name": "Betty Mae Johnson",
+        "client_age": 74,
+        "carrier": "Mutual of Omaha",
+        "product_type": "Final Expense WL",
+        "face_amount": 15_000,
+        "annual_premium": 1_140,
+        "carrier_case_number": "MOO-2024-44812",
+        "status": models.CaseStatus.submitted,
+        "submitted_at": past(2),
+        "status_updated_at": past(2),
+        "requirements_outstanding": None,
+        "notes": "E-app submitted. Simplified issue — should approve in 24-48 hrs.",
+        "ai_risk_level": "low",
+        "ai_risk_reason": "Only 2 days since submission — within normal simplified-issue window.",
+        "ai_recommended_action": "Check carrier portal tomorrow for approval.",
+    },
+    {
+        "prospect_id": created_agents[2].id,
+        "client_name": "Raymond Torres",
+        "client_age": 68,
+        "carrier": "American Amicable",
+        "product_type": "Final Expense WL",
+        "face_amount": 10_000,
+        "annual_premium": 864,
+        "carrier_case_number": "AA-2024-29004",
+        "status": models.CaseStatus.approved,
+        "submitted_at": past(30),
+        "status_updated_at": past(16),  # stale — over 14-day approved threshold
+        "requirements_outstanding": None,
+        "next_followup_date": past(2),
+        "notes": "Approved standard. Policy not yet delivered — agent hasn't scheduled delivery.",
+        "ai_risk_level": "high",
+        "ai_risk_reason": "Approved 16 days ago with no delivery scheduled — lapse risk rising.",
+        "ai_recommended_action": "Contact client immediately to schedule policy delivery meeting.",
+    },
+    {
+        "prospect_id": created_agents[2].id,
+        "client_name": "Gloria Hutchins",
+        "client_age": 81,
+        "carrier": "Foresters Financial",
+        "product_type": "Final Expense WL",
+        "face_amount": 8_000,
+        "annual_premium": 912,
+        "carrier_case_number": "FF-2024-17703",
+        "status": models.CaseStatus.nto,
+        "submitted_at": past(50),
+        "status_updated_at": past(10),
+        "requirements_outstanding": None,
+        "notes": "Client declined to accept policy at delivery — said premium was too high.",
+        "ai_risk_level": "low",
+        "ai_risk_reason": "NTO — terminal status, no further action on this case.",
+        "ai_recommended_action": "Requalify client for a lower face amount or graded benefit policy.",
+    },
+    # Monique Jackson (top producer, mixed) — 2 cases
+    {
+        "prospect_id": created_agents[5].id,
+        "client_name": "Thomas & Angela Whitfield",
+        "client_age": 51,
+        "carrier": "Lincoln Financial",
+        "product_type": "IUL",
+        "face_amount": 2_000_000,
+        "annual_premium": 32_400,
+        "carrier_case_number": "LFG-2024-08819",
+        "status": models.CaseStatus.pending,
+        "submitted_at": past(8),
+        "status_updated_at": past(8),
+        "requirements_outstanding": None,
+        "notes": "Joint insured case. Both non-smokers, excellent health. Expecting Preferred Plus.",
+        "ai_risk_level": "low",
+        "ai_risk_reason": "8 days in pending on a clean $2M case — normal timeline.",
+        "ai_recommended_action": "Follow up at 21-day mark. Prepare delivery meeting agenda.",
+    },
+    {
+        "prospect_id": created_agents[5].id,
+        "client_name": "David Kiran",
+        "client_age": 44,
+        "carrier": "Protective Life",
+        "product_type": "Term (20-yr)",
+        "face_amount": 1_500_000,
+        "annual_premium": 2_100,
+        "carrier_case_number": "PL-2024-55601",
+        "status": models.CaseStatus.requirements,
+        "submitted_at": past(14),
+        "status_updated_at": past(3),
+        "requirements_outstanding": "Attending physician statement — sleep study for sleep apnea disclosed",
+        "notes": "Client has mild sleep apnea, CPAP compliant. Should get standard or table B.",
+        "ai_risk_level": "medium",
+        "ai_risk_reason": "APS requested 3 days ago for sleep apnea — monitoring physician's office response time.",
+        "ai_recommended_action": "Have client contact physician office directly to expedite APS release.",
+    },
+]
+
+for case_data in pending_cases_data:
+    case = models.PendingCase(**case_data)
+    db.add(case)
+
+db.commit()
 db.close()
 
 print("Database seeded with life insurance agent data.")
+print(f"  {len(pending_cases_data)} pending cases added")
 print(f"  {len(employees)} employees")
 print(f"  {len(sample_agents)} life agents")
 print(f"  {len(sample_agents)} pipeline entries")

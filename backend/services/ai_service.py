@@ -256,3 +256,92 @@ async def score_lead(prospect: dict) -> int:
         score += 5
 
     return min(score, 100)
+
+
+# ---------------------------------------------------------------------------
+# Pending Cases AI
+# ---------------------------------------------------------------------------
+
+CASE_ANALYSIS_SYSTEM = """You are a life insurance case management expert and AI consultant.
+Analyze a pending life insurance case and return a structured JSON risk assessment.
+
+Risk levels:
+- "low": case is moving normally, no immediate action needed
+- "medium": case may need attention soon, watch closely
+- "high": case is stalled or at risk of falling through, act now
+- "critical": case is in danger — client may walk, carrier may close, requirements severely overdue
+
+Stale thresholds by status (no update beyond these = elevated risk):
+- submitted: 3 days
+- pending: 21 days
+- requirements: 7 days (agents must respond fast or cases die)
+- approved: 14 days
+- delivery: 7 days (policy must be signed quickly or client gets cold feet)
+
+Output ONLY valid JSON with these keys:
+{
+  "risk_level": "low|medium|high|critical",
+  "risk_reason": "<1-2 sentence explanation>",
+  "recommended_action": "<specific, actionable next step>",
+  "estimated_days_to_resolution": <integer or null>
+}"""
+
+CASE_FOLLOWUP_SYSTEM = """You are a practice management consultant helping a life insurance agent stay on top of their pending cases.
+Write a brief, professional check-in message the consultant can send to the agent about a specific case.
+The message should feel like a helpful colleague, not a nagging system alert.
+Mention the specific client, carrier, and the current blocker or next step.
+Under 80 words. No subject line. Conversational but professional."""
+
+
+async def analyze_pending_case(case: dict, days_in_status: int) -> dict:
+    """Return AI risk assessment for a pending life case."""
+    prompt = f"""Analyze this pending life insurance case:
+
+Client: {case.get('client_name')}, age {case.get('client_age', 'unknown')}
+Carrier: {case.get('carrier')}
+Product: {case.get('product_type')}
+Face Amount: ${case.get('face_amount', 0):,.0f}
+Annual Premium: ${case.get('annual_premium', 0):,.0f}
+Status: {case.get('status')}
+Days in current status: {days_in_status}
+Requirements outstanding: {case.get('requirements_outstanding') or 'none listed'}
+Notes: {case.get('notes') or 'none'}"""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=256,
+        system=CASE_ANALYSIS_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    try:
+        return json.loads(response.content[0].text.strip())
+    except json.JSONDecodeError:
+        return {
+            "risk_level": "medium",
+            "risk_reason": "Unable to parse AI analysis.",
+            "recommended_action": "Review case manually.",
+            "estimated_days_to_resolution": None,
+        }
+
+
+async def generate_case_followup(case: dict, agent: dict) -> str:
+    """Draft a check-in message for the agent about their pending case."""
+    prompt = f"""Write a check-in message for agent {agent.get('first_name')} {agent.get('last_name')} about:
+
+Client: {case.get('client_name')}
+Carrier: {case.get('carrier')}
+Product: {case.get('product_type')}
+Status: {case.get('status')}
+Days in status: {case.get('days_in_status', 'unknown')}
+Requirements outstanding: {case.get('requirements_outstanding') or 'none listed'}
+Recommended action: {case.get('ai_recommended_action') or 'follow up with carrier'}"""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=200,
+        system=CASE_FOLLOWUP_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    return response.content[0].text.strip()
