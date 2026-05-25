@@ -37,6 +37,15 @@ export const ai = {
   outreachLogs: (prospectId) => api.get(`/ai/outreach/logs/${prospectId}`).then(r => r.data),
 }
 
+export const queue = {
+  list: (params) => api.get('/queue', { params }).then(r => r.data),
+  metrics: () => api.get('/queue/metrics').then(r => r.data),
+  update: (id, data) => api.patch(`/queue/${id}`, data).then(r => r.data),
+  markSent: (id) => api.post(`/queue/${id}/send`).then(r => r.data),
+  dismiss: (id) => api.post(`/queue/${id}/dismiss`).then(r => r.data),
+  triggerCheck: () => api.post('/queue/check').then(r => r.data),
+}
+
 export const cases = {
   list: (params) => api.get('/cases', { params }).then(r => r.data),
   get: (id) => api.get(`/cases/${id}`).then(r => r.data),

@@ -71,6 +71,7 @@ class Prospect(Base):
     outreach_logs = relationship("OutreachLog", back_populates="prospect")
     qualification_sessions = relationship("QualificationSession", back_populates="prospect")
     pending_cases = relationship("PendingCase", back_populates="prospect")
+    followup_queue_items = relationship("FollowupQueueItem", back_populates="prospect")
 
 
 class Employee(Base):
@@ -190,6 +191,33 @@ class PendingCase(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     prospect = relationship("Prospect", back_populates="pending_cases")
+    followup_queue_items = relationship("FollowupQueueItem", back_populates="case")
+
+
+class QueueStatus(str, enum.Enum):
+    pending = "pending"     # waiting for consultant action
+    sent = "sent"           # consultant marked as sent
+    dismissed = "dismissed" # consultant dismissed without sending
+
+
+class FollowupQueueItem(Base):
+    __tablename__ = "followup_queue"
+
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(Integer, ForeignKey("pending_cases.id"))
+    prospect_id = Column(Integer, ForeignKey("prospects.id"))  # the agent
+
+    # The generated message
+    message = Column(Text, nullable=False)
+    trigger_reason = Column(String)  # e.g. "requirements stale 11d (threshold: 7d)"
+    status = Column(Enum(QueueStatus), default=QueueStatus.pending)
+
+    triggered_at = Column(DateTime(timezone=True), server_default=func.now())
+    sent_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    case = relationship("PendingCase", back_populates="followup_queue_items")
+    prospect = relationship("Prospect", back_populates="followup_queue_items")
 
 
 class QualificationSession(Base):
