@@ -59,7 +59,7 @@ export default function ProspectDetail() {
 
   return (
     <div className="p-8">
-      <button onClick={() => navigate('/prospects')} className="flex items-center gap-1 text-gray-500 hover:text-gray-800 text-sm mb-6">
+      <button onClick={() => navigate('/app/prospects')} className="flex items-center gap-1 text-gray-500 hover:text-gray-800 text-sm mb-6">
         <ArrowLeft size={16} /> Back to Agents
       </button>
 

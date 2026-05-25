@@ -134,7 +134,7 @@ export default function Dashboard() {
         {/* ── Lead Influx + Today's Agenda ── */}
         <div className="grid grid-cols-5 gap-5">
           <div className="col-span-3 card flex flex-col" style={{ maxHeight: 380 }}>
-            <SectionHeader icon={Activity} title="Lead Influx" sub="Most recently added agents" link="/prospects" linkLabel="View all" />
+            <SectionHeader icon={Activity} title="Lead Influx" sub="Most recently added agents" link="/app/prospects" linkLabel="View all" />
             <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
               {allProspectData.length === 0 ? (
                 <p className="text-gray-400 text-sm px-5 py-8 text-center">No prospects yet.</p>
@@ -145,7 +145,7 @@ export default function Dashboard() {
           </div>
 
           <div className="col-span-2 card flex flex-col" style={{ maxHeight: 380 }}>
-            <SectionHeader icon={Calendar} title="Today's Agenda" sub={format(now, 'EEEE, MMM d')} link="/appointments" linkLabel="Calendar" />
+            <SectionHeader icon={Calendar} title="Today's Agenda" sub={format(now, 'EEEE, MMM d')} link="/app/appointments" linkLabel="Calendar" />
             <div className="flex-1 overflow-y-auto">
               {todayAppts.length === 0 && (queueItems || []).length === 0 ? (
                 <p className="text-gray-400 text-sm px-5 py-8 text-center">Nothing scheduled for today.</p>
@@ -174,14 +174,14 @@ export default function Dashboard() {
 
         {/* ── Pipeline Health ── */}
         <div className="card p-5">
-          <SectionHeader icon={TrendingUp} title="Pipeline Health" sub="Active deals by stage" link="/pipeline" linkLabel="Full pipeline" inline />
+          <SectionHeader icon={TrendingUp} title="Pipeline Health" sub="Active deals by stage" link="/app/pipeline" linkLabel="Full pipeline" inline />
           <PipelineStrip data={pl} />
         </div>
 
         {/* ── Cases at Risk + Production Mix ── */}
         <div className="grid grid-cols-2 gap-5">
           <div className="card flex flex-col" style={{ maxHeight: 320 }}>
-            <SectionHeader icon={AlertTriangle} title="Cases at Risk" sub="Critical · High · Stale" link="/cases" linkLabel="All cases" />
+            <SectionHeader icon={AlertTriangle} title="Cases at Risk" sub="Critical · High · Stale" link="/app/cases" linkLabel="All cases" />
             <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
               {atRiskCases.length === 0 ? (
                 <p className="text-gray-400 text-sm px-5 py-8 text-center flex flex-col items-center gap-2">
@@ -257,7 +257,7 @@ function LeadRow({ prospect: p }) {
   return (
     <div
       className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 cursor-pointer"
-      onClick={() => navigate(`/prospects/${p.id}`)}
+      onClick={() => navigate(`/app/prospects/${p.id}`)}
     >
       <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
         <span className="text-xs font-bold text-slate-600">
@@ -313,7 +313,7 @@ function AgendaQueueRow({ item }) {
   return (
     <div
       className="flex items-center gap-2 py-1.5 cursor-pointer hover:opacity-80"
-      onClick={() => navigate('/queue')}
+      onClick={() => navigate('/app/queue')}
     >
       <span className={`w-2 h-2 rounded-full shrink-0 ${RISK_DOT[risk] || 'bg-gray-400'}`} />
       <div className="flex-1 min-w-0">
@@ -370,7 +370,7 @@ function RiskCaseRow({ case: c }) {
   return (
     <div
       className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 cursor-pointer"
-      onClick={() => navigate('/cases')}
+      onClick={() => navigate('/app/cases')}
     >
       <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dot}`} />
       <div className="flex-1 min-w-0">

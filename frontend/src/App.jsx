@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard, Users, Calendar, TrendingUp, Bot,
-  Shield, FileText, Bell, Heart,
+  Shield, FileText, Bell, Heart, Home,
 } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Prospects from './pages/Prospects'
@@ -13,6 +13,7 @@ import ProspectDetail from './pages/ProspectDetail'
 import Cases from './pages/Cases'
 import Queue from './pages/Queue'
 import LeadPool from './pages/LeadPool'
+import Landing from './pages/Landing'
 import IntakeForm from './pages/IntakeForm'
 import ConsumerLeadForm from './pages/ConsumerLeadForm'
 import { queue as queueApi, leads as leadsApi } from './api'
@@ -34,19 +35,19 @@ function Sidebar() {
   const newLeadsCount = leadMetrics?.new ?? 0
 
   const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/leads', icon: Heart, label: 'Lead Pool', badge: newLeadsCount },
-    { to: '/prospects', icon: Users, label: 'Life Agents' },
-    { to: '/cases', icon: FileText, label: 'Pending Cases' },
-    { to: '/queue', icon: Bell, label: 'Follow-up Queue', badge: pendingCount },
-    { to: '/appointments', icon: Calendar, label: 'Appointments' },
-    { to: '/pipeline', icon: TrendingUp, label: 'Pipeline' },
+    { to: '/app', icon: LayoutDashboard, label: 'Dashboard', end: true },
+    { to: '/app/leads', icon: Heart, label: 'Lead Pool', badge: newLeadsCount },
+    { to: '/app/prospects', icon: Users, label: 'Life Agents' },
+    { to: '/app/cases', icon: FileText, label: 'Pending Cases' },
+    { to: '/app/queue', icon: Bell, label: 'Follow-up Queue', badge: pendingCount },
+    { to: '/app/appointments', icon: Calendar, label: 'Appointments' },
+    { to: '/app/pipeline', icon: TrendingUp, label: 'Pipeline' },
   ]
 
   return (
     <aside className="w-60 bg-slate-900 flex flex-col shrink-0">
       <div className="px-5 py-6 border-b border-slate-700">
-        <div className="flex items-center gap-2">
+        <NavLink to="/" className="flex items-center gap-2 hover:opacity-90">
           <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
             <Shield size={16} className="text-white" />
           </div>
@@ -54,15 +55,15 @@ function Sidebar() {
             <p className="text-white font-bold text-sm leading-none">InsureFlow AI</p>
             <p className="text-slate-400 text-xs mt-0.5">Life Insurance CRM</p>
           </div>
-        </div>
+        </NavLink>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map(({ to, icon: Icon, label, badge }) => (
+        {navItems.map(({ to, icon: Icon, label, badge, end }) => (
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={end}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
@@ -82,7 +83,7 @@ function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-4 py-4 border-t border-slate-700 space-y-2">
+      <div className="px-4 py-4 border-t border-slate-700 space-y-2.5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
             <Bot size={14} className="text-white" />
@@ -92,6 +93,12 @@ function Sidebar() {
             <p className="text-green-400 text-xs">Online · checks hourly</p>
           </div>
         </div>
+        <NavLink
+          to="/"
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-2 py-1.5 transition-colors"
+        >
+          <Home size={12} /> Marketing site
+        </NavLink>
         <div className="flex gap-1.5">
           <a
             href="/intake"
@@ -139,11 +146,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public standalone forms — no sidebar */}
+        {/* Marketing landing page */}
+        <Route path="/" element={<Landing />} />
+        {/* Public standalone forms */}
         <Route path="/intake" element={<IntakeForm />} />
         <Route path="/quote" element={<ConsumerLeadForm />} />
         {/* Admin app */}
-        <Route path="/*" element={<AdminLayout />} />
+        <Route path="/app/*" element={<AdminLayout />} />
       </Routes>
     </BrowserRouter>
   )

@@ -138,7 +138,7 @@ export default function Prospects() {
                 <tr
                   key={p.id}
                   className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => navigate(`/prospects/${p.id}`)}
+                  onClick={() => navigate(`/app/prospects/${p.id}`)}
                 >
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900">{p.full_name}</p>
