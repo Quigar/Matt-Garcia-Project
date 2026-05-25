@@ -4,6 +4,7 @@ const api = axios.create({ baseURL: '/api' })
 
 export const prospects = {
   list: (params) => api.get('/prospects', { params }).then(r => r.data),
+  recent: (limit = 10) => api.get('/prospects', { params: { sort_by: 'created_at', limit } }).then(r => r.data),
   get: (id) => api.get(`/prospects/${id}`).then(r => r.data),
   create: (data) => api.post('/prospects', data).then(r => r.data),
   update: (id, data) => api.patch(`/prospects/${id}`, data).then(r => r.data),

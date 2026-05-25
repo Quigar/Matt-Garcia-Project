@@ -60,6 +60,7 @@ def list_prospects(
     search: Optional[str] = None,
     product_focus: Optional[str] = None,
     production_tier: Optional[str] = None,
+    sort_by: str = "lead_score",   # lead_score | created_at
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
@@ -84,7 +85,8 @@ def list_prospects(
         )
 
     total = query.count()
-    prospects = query.order_by(models.Prospect.lead_score.desc()).offset(skip).limit(limit).all()
+    order_col = models.Prospect.created_at.desc() if sort_by == "created_at" else models.Prospect.lead_score.desc()
+    prospects = query.order_by(order_col).offset(skip).limit(limit).all()
 
     return {
         "total": total,
