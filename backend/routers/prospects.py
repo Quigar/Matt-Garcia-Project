@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
-from datetime import datetime
+from pydantic import BaseModel
+from typing import Optional
 import models
 from database import get_db
 from services.ai_service import score_lead
@@ -18,12 +17,16 @@ class ProspectCreate(BaseModel):
     phone: Optional[str] = None
     company: Optional[str] = None
     title: Optional[str] = None
-    agency_size: Optional[str] = None
-    lines_of_business: Optional[str] = None
+    product_focus: Optional[str] = None
+    captive_or_independent: Optional[str] = None
+    imo_fmo_affiliation: Optional[str] = None
+    carrier_appointments: Optional[int] = None
+    annual_life_premium: Optional[float] = None
+    avg_case_size: Optional[float] = None
+    has_admin_support: Optional[bool] = False
+    production_tier: Optional[str] = None
+    pain_points: Optional[str] = None
     current_tech_stack: Optional[str] = None
-    annual_premium_volume: Optional[float] = None
-    num_producers: Optional[int] = None
-    has_ops_team: Optional[bool] = False
     source: Optional[str] = None
     notes: Optional[str] = None
 
@@ -35,12 +38,16 @@ class ProspectUpdate(BaseModel):
     phone: Optional[str] = None
     company: Optional[str] = None
     title: Optional[str] = None
-    agency_size: Optional[str] = None
-    lines_of_business: Optional[str] = None
+    product_focus: Optional[str] = None
+    captive_or_independent: Optional[str] = None
+    imo_fmo_affiliation: Optional[str] = None
+    carrier_appointments: Optional[int] = None
+    annual_life_premium: Optional[float] = None
+    avg_case_size: Optional[float] = None
+    has_admin_support: Optional[bool] = None
+    production_tier: Optional[str] = None
+    pain_points: Optional[str] = None
     current_tech_stack: Optional[str] = None
-    annual_premium_volume: Optional[float] = None
-    num_producers: Optional[int] = None
-    has_ops_team: Optional[bool] = None
     status: Optional[str] = None
     source: Optional[str] = None
     notes: Optional[str] = None
@@ -51,6 +58,8 @@ class ProspectUpdate(BaseModel):
 def list_prospects(
     status: Optional[str] = None,
     search: Optional[str] = None,
+    product_focus: Optional[str] = None,
+    production_tier: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
@@ -59,7 +68,10 @@ def list_prospects(
 
     if status:
         query = query.filter(models.Prospect.status == status)
-
+    if product_focus:
+        query = query.filter(models.Prospect.product_focus == product_focus)
+    if production_tier:
+        query = query.filter(models.Prospect.production_tier == production_tier)
     if search:
         query = query.filter(
             or_(
@@ -67,11 +79,12 @@ def list_prospects(
                 models.Prospect.last_name.ilike(f"%{search}%"),
                 models.Prospect.company.ilike(f"%{search}%"),
                 models.Prospect.email.ilike(f"%{search}%"),
+                models.Prospect.imo_fmo_affiliation.ilike(f"%{search}%"),
             )
         )
 
     total = query.count()
-    prospects = query.order_by(models.Prospect.created_at.desc()).offset(skip).limit(limit).all()
+    prospects = query.order_by(models.Prospect.lead_score.desc()).offset(skip).limit(limit).all()
 
     return {
         "total": total,
@@ -86,16 +99,39 @@ async def create_prospect(data: ProspectCreate, db: Session = Depends(get_db)):
         if existing:
             raise HTTPException(status_code=409, detail="Prospect with this email already exists")
 
-    prospect = models.Prospect(**data.model_dump())
-    prospect.lead_score = await score_lead(data.model_dump())
+    payload = data.model_dump()
+
+    # Auto-set production tier from annual premium if not provided
+    if not payload.get("production_tier") and payload.get("annual_life_premium"):
+        p = payload["annual_life_premium"]
+        if p >= 1_000_000:
+            payload["production_tier"] = "top_producer"
+        elif p >= 500_000:
+            payload["production_tier"] = "established"
+        elif p >= 100_000:
+            payload["production_tier"] = "growing"
+        else:
+            payload["production_tier"] = "emerging"
+
+    prospect = models.Prospect(**payload)
+    prospect.lead_score = await score_lead(payload)
     db.add(prospect)
     db.commit()
     db.refresh(prospect)
 
+    # Estimate consulting deal value based on production tier
+    tier_deal_values = {
+        "top_producer": 12000,
+        "established": 8400,
+        "growing": 4800,
+        "emerging": 3600,
+    }
+    deal_val = tier_deal_values.get(prospect.production_tier or "growing", 4800)
+
     pipeline = models.PipelineEntry(
         prospect_id=prospect.id,
         stage=models.PipelineStage.lead,
-        deal_value=2500 * 12,
+        deal_value=deal_val,
         probability=0.05,
     )
     db.add(pipeline)
@@ -123,11 +159,11 @@ async def update_prospect(prospect_id: int, data: ProspectUpdate, db: Session = 
         setattr(prospect, field, value)
 
     prospect.lead_score = await score_lead({
-        "annual_premium_volume": prospect.annual_premium_volume,
-        "num_producers": prospect.num_producers,
-        "lines_of_business": prospect.lines_of_business,
-        "has_ops_team": prospect.has_ops_team,
-        "title": prospect.title,
+        "annual_life_premium": prospect.annual_life_premium,
+        "product_focus": prospect.product_focus,
+        "captive_or_independent": prospect.captive_or_independent,
+        "has_admin_support": prospect.has_admin_support,
+        "carrier_appointments": prospect.carrier_appointments,
         "current_tech_stack": prospect.current_tech_stack,
     })
 
@@ -145,6 +181,23 @@ def delete_prospect(prospect_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+PRODUCT_LABELS = {
+    "final_expense": "Final Expense",
+    "term": "Term Life",
+    "whole_life": "Whole Life",
+    "iul_vul": "IUL / VUL",
+    "annuities": "Annuities",
+    "mixed": "Mixed",
+}
+
+TIER_LABELS = {
+    "emerging": "Emerging (<$100K)",
+    "growing": "Growing ($100K–$500K)",
+    "established": "Established ($500K–$1M)",
+    "top_producer": "Top Producer ($1M+)",
+}
+
+
 def _serialize_prospect(p: models.Prospect) -> dict:
     return {
         "id": p.id,
@@ -155,12 +208,18 @@ def _serialize_prospect(p: models.Prospect) -> dict:
         "phone": p.phone,
         "company": p.company,
         "title": p.title,
-        "agency_size": p.agency_size,
-        "lines_of_business": p.lines_of_business,
+        "product_focus": p.product_focus,
+        "product_focus_label": PRODUCT_LABELS.get(p.product_focus or "", p.product_focus or "—"),
+        "captive_or_independent": p.captive_or_independent,
+        "imo_fmo_affiliation": p.imo_fmo_affiliation,
+        "carrier_appointments": p.carrier_appointments,
+        "annual_life_premium": p.annual_life_premium,
+        "avg_case_size": p.avg_case_size,
+        "has_admin_support": p.has_admin_support,
+        "production_tier": p.production_tier,
+        "production_tier_label": TIER_LABELS.get(p.production_tier or "", p.production_tier or "—"),
+        "pain_points": p.pain_points,
         "current_tech_stack": p.current_tech_stack,
-        "annual_premium_volume": p.annual_premium_volume,
-        "num_producers": p.num_producers,
-        "has_ops_team": p.has_ops_team,
         "status": p.status.value if p.status else None,
         "lead_score": p.lead_score,
         "source": p.source,

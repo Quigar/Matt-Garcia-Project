@@ -9,9 +9,14 @@ const STAGE_CONFIG = {
   discovery_call: { label: 'Discovery', color: 'bg-indigo-50 border-indigo-200' },
   demo: { label: 'Demo', color: 'bg-purple-50 border-purple-200' },
   proposal: { label: 'Proposal', color: 'bg-orange-50 border-orange-200' },
-  compliance_review: { label: 'Compliance', color: 'bg-yellow-50 border-yellow-200' },
-  closed_won: { label: 'Won', color: 'bg-green-50 border-green-200' },
+  contracting: { label: 'Contracting', color: 'bg-yellow-50 border-yellow-200' },
+  closed_won: { label: 'Onboarded', color: 'bg-green-50 border-green-200' },
   closed_lost: { label: 'Lost', color: 'bg-red-50 border-red-200' },
+}
+
+const PRODUCT_LABELS = {
+  iul_vul: 'IUL/VUL', annuities: 'Annuities', whole_life: 'Whole Life',
+  term: 'Term', final_expense: 'FE', mixed: 'Mixed',
 }
 
 function fmt(n) {
@@ -95,12 +100,10 @@ export default function Pipeline() {
                   <DealCard
                     key={deal.id}
                     deal={deal}
-                    stages={stages}
                     onSelect={() => {
                       setSelectedEntry(deal)
                       setRecommendations(null)
                     }}
-                    onStageChange={(newStage) => updateMutation.mutate({ id: deal.id, data: { stage: newStage } })}
                     selected={selectedEntry?.id === deal.id}
                   />
                 ))}
@@ -154,7 +157,7 @@ export default function Pipeline() {
   )
 }
 
-function DealCard({ deal, stages, onSelect, onStageChange, selected }) {
+function DealCard({ deal, onSelect, selected }) {
   const score = deal.lead_score ?? 0
   const scoreColor = score >= 70 ? 'text-green-500' : score >= 40 ? 'text-yellow-500' : 'text-red-400'
 
@@ -166,7 +169,11 @@ function DealCard({ deal, stages, onSelect, onStageChange, selected }) {
       }`}
     >
       <p className="font-medium text-gray-900 text-xs truncate">{deal.prospect_name}</p>
-      <p className="text-gray-400 text-xs truncate">{deal.company}</p>
+      <div className="flex items-center gap-1 mt-0.5">
+        {deal.product_focus && (
+          <span className="text-xs text-gray-400">{PRODUCT_LABELS[deal.product_focus] || deal.product_focus}</span>
+        )}
+      </div>
       <div className="flex items-center justify-between mt-2">
         <p className="text-xs font-semibold text-gray-700">
           {deal.deal_value ? `$${(deal.deal_value / 1000).toFixed(0)}K/yr` : '—'}

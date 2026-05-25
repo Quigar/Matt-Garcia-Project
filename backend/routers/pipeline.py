@@ -23,9 +23,9 @@ STAGE_DEFAULT_PROBABILITY = {
     "lead": 0.05,
     "qualified": 0.15,
     "discovery_call": 0.25,
-    "demo": 0.40,
-    "proposal": 0.60,
-    "compliance_review": 0.80,
+    "demo": 0.45,
+    "proposal": 0.65,
+    "contracting": 0.85,
     "closed_won": 1.0,
     "closed_lost": 0.0,
 }
@@ -33,7 +33,6 @@ STAGE_DEFAULT_PROBABILITY = {
 
 @router.get("")
 def get_pipeline(db: Session = Depends(get_db)):
-    """Return all pipeline entries grouped by stage with aggregates."""
     entries = (
         db.query(models.PipelineEntry)
         .join(models.Prospect)
@@ -47,8 +46,7 @@ def get_pipeline(db: Session = Depends(get_db)):
 
     for entry in entries:
         stage_key = entry.stage.value if entry.stage else "lead"
-        serialized = _serialize_entry(entry)
-        stages[stage_key]["deals"].append(serialized)
+        stages[stage_key]["deals"].append(_serialize_entry(entry))
         stages[stage_key]["total_value"] += entry.deal_value or 0
         stages[stage_key]["count"] += 1
 
@@ -72,7 +70,6 @@ def get_pipeline(db: Session = Depends(get_db)):
 
 @router.get("/metrics")
 def get_metrics(db: Session = Depends(get_db)):
-    """Dashboard KPIs."""
     total_prospects = db.query(models.Prospect).count()
     qualified = db.query(models.Prospect).filter(
         models.Prospect.status == models.ProspectStatus.qualified
@@ -98,8 +95,14 @@ def get_metrics(db: Session = Depends(get_db)):
     ).scalar() or 0
 
     avg_score = db.query(func.avg(models.Prospect.lead_score)).scalar() or 0
-
     win_rate = (closed_won / (closed_won + closed_lost) * 100) if (closed_won + closed_lost) > 0 else 0
+
+    # Production tier breakdown
+    tiers = {}
+    for tier in ["emerging", "growing", "established", "top_producer"]:
+        tiers[tier] = db.query(models.Prospect).filter(
+            models.Prospect.production_tier == tier
+        ).count()
 
     return {
         "total_prospects": total_prospects,
@@ -111,6 +114,7 @@ def get_metrics(db: Session = Depends(get_db)):
         "won_revenue": won_revenue,
         "active_pipeline_value": pipeline_value,
         "avg_lead_score": round(avg_score, 1),
+        "production_tier_breakdown": tiers,
     }
 
 
@@ -129,7 +133,6 @@ def update_pipeline_entry(entry_id: int, data: PipelineUpdate, db: Session = Dep
         raise HTTPException(status_code=404, detail="Pipeline entry not found")
 
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
-
     if "stage" in update_data and "probability" not in update_data:
         update_data["probability"] = STAGE_DEFAULT_PROBABILITY.get(update_data["stage"], entry.probability)
 
@@ -152,8 +155,11 @@ async def get_recommendations(entry_id: int, db: Session = Depends(get_db)):
         "last_name": entry.prospect.last_name,
         "company": entry.prospect.company,
         "lead_score": entry.prospect.lead_score,
-        "lines_of_business": entry.prospect.lines_of_business,
+        "product_focus": entry.prospect.product_focus,
+        "production_tier": entry.prospect.production_tier,
+        "imo_fmo_affiliation": entry.prospect.imo_fmo_affiliation,
         "current_tech_stack": entry.prospect.current_tech_stack,
+        "pain_points": entry.prospect.pain_points,
     }
     pipeline_data = {
         "stage": entry.stage.value if entry.stage else None,
@@ -172,6 +178,8 @@ def _serialize_entry(e: models.PipelineEntry) -> dict:
         "prospect_id": e.prospect_id,
         "prospect_name": f"{e.prospect.first_name} {e.prospect.last_name}" if e.prospect else None,
         "company": e.prospect.company if e.prospect else None,
+        "product_focus": e.prospect.product_focus if e.prospect else None,
+        "production_tier": e.prospect.production_tier if e.prospect else None,
         "lead_score": e.prospect.lead_score if e.prospect else 0,
         "stage": e.stage.value if e.stage else None,
         "deal_value": e.deal_value,

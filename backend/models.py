@@ -19,7 +19,7 @@ class PipelineStage(str, enum.Enum):
     discovery_call = "discovery_call"
     demo = "demo"
     proposal = "proposal"
-    compliance_review = "compliance_review"
+    contracting = "contracting"
     closed_won = "closed_won"
     closed_lost = "closed_lost"
 
@@ -40,17 +40,27 @@ class Prospect(Base):
     last_name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True)
     phone = Column(String)
-    company = Column(String)
-    title = Column(String)
-    agency_size = Column(String)  # small/mid/large
-    lines_of_business = Column(String)  # CSV: "P&C,Life,Health"
-    current_tech_stack = Column(String)
-    annual_premium_volume = Column(Float)
-    num_producers = Column(Integer)
-    has_ops_team = Column(Boolean, default=False)
+    company = Column(String)          # DBA / practice name
+    title = Column(String)            # e.g. "Independent Life Agent", "Financial Advisor"
+
+    # Life-insurance-specific profile
+    product_focus = Column(String)    # final_expense | term | whole_life | iul_vul | annuities | mixed
+    captive_or_independent = Column(String)   # captive | independent | broker_dealer
+    imo_fmo_affiliation = Column(String)      # name of their IMO/FMO/BGA
+    carrier_appointments = Column(Integer)    # number of carriers contracted with
+    annual_life_premium = Column(Float)       # annual submitted life premium ($)
+    avg_case_size = Column(Float)             # average annual premium per policy
+    has_admin_support = Column(Boolean, default=False)  # VA / admin assistant
+    production_tier = Column(String)          # emerging | growing | established | top_producer
+
+    # Pain points captured during qualification (comma-separated)
+    pain_points = Column(String)
+
+    current_tech_stack = Column(String)       # iPipeline, LifeSuite, Salesforce, spreadsheets, etc.
+
     status = Column(Enum(ProspectStatus), default=ProspectStatus.lead)
-    lead_score = Column(Integer, default=0)  # 0-100
-    source = Column(String)  # linkedin, referral, cold_email, etc.
+    lead_score = Column(Integer, default=0)   # 0–100
+    source = Column(String)                   # linkedin, referral, cold_email, conference, inbound
     notes = Column(Text)
     opt_out = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -87,7 +97,7 @@ class Appointment(Base):
     duration_minutes = Column(Integer, default=30)
     meeting_link = Column(String)
     status = Column(Enum(AppointmentStatus), default=AppointmentStatus.scheduled)
-    appointment_type = Column(String)  # discovery, demo, proposal_review
+    appointment_type = Column(String)  # discovery, demo, proposal_review, onboarding
     notes = Column(Text)
     outcome = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -104,7 +114,7 @@ class PipelineEntry(Base):
     prospect_id = Column(Integer, ForeignKey("prospects.id"))
     stage = Column(Enum(PipelineStage), default=PipelineStage.lead)
     deal_value = Column(Float, default=0.0)
-    probability = Column(Float, default=0.0)  # 0-1
+    probability = Column(Float, default=0.0)  # 0–1
     expected_close_date = Column(DateTime(timezone=True))
     notes = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -118,8 +128,8 @@ class OutreachLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     prospect_id = Column(Integer, ForeignKey("prospects.id"))
-    channel = Column(String)  # email, phone, linkedin, sms
-    direction = Column(String)  # outbound, inbound
+    channel = Column(String)   # email, phone, linkedin, sms
+    direction = Column(String) # outbound, inbound
     subject = Column(String)
     body = Column(Text)
     ai_generated = Column(Boolean, default=False)
@@ -136,7 +146,7 @@ class QualificationSession(Base):
     id = Column(Integer, primary_key=True, index=True)
     prospect_id = Column(Integer, ForeignKey("prospects.id"))
     messages = Column(Text)  # JSON array of {role, content}
-    qualification_score = Column(Integer)  # 0-100
+    qualification_score = Column(Integer)  # 0–100
     qualification_summary = Column(Text)
     recommended_action = Column(String)
     completed = Column(Boolean, default=False)
