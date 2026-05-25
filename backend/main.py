@@ -10,7 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from database import engine, Base
 import models
-from routers import prospects, appointments, pipeline, ai, cases, queue
+from routers import prospects, appointments, pipeline, ai, cases, queue, intake, leads
 from services.queue_service import check_and_queue_stale_cases
 
 logger = logging.getLogger(__name__)
@@ -65,6 +65,8 @@ app.include_router(pipeline.router)
 app.include_router(ai.router)
 app.include_router(cases.router)
 app.include_router(queue.router)
+app.include_router(intake.router)
+app.include_router(leads.router)
 
 
 @app.get("/api/health")

@@ -72,6 +72,7 @@ class Prospect(Base):
     qualification_sessions = relationship("QualificationSession", back_populates="prospect")
     pending_cases = relationship("PendingCase", back_populates="prospect")
     followup_queue_items = relationship("FollowupQueueItem", back_populates="prospect")
+    consumer_leads = relationship("ConsumerLead", back_populates="assigned_agent")
 
 
 class Employee(Base):
@@ -218,6 +219,53 @@ class FollowupQueueItem(Base):
 
     case = relationship("PendingCase", back_populates="followup_queue_items")
     prospect = relationship("Prospect", back_populates="followup_queue_items")
+
+
+class ConsumerLeadStatus(str, enum.Enum):
+    new = "new"
+    assigned = "assigned"
+    contacted = "contacted"
+    working = "working"
+    converted = "converted"
+    dead = "dead"
+
+
+class ConsumerLead(Base):
+    __tablename__ = "consumer_leads"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Contact
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    email = Column(String, index=True)
+    phone = Column(String)
+    age = Column(Integer)
+    state = Column(String(2))
+    zip_code = Column(String(10))
+
+    # Insurance interest
+    product_type = Column(String)    # term | whole_life | final_expense | iul | annuity
+    coverage_amount = Column(Float)  # desired face amount
+    monthly_budget = Column(Float)   # what they can afford per month
+    health_class = Column(String)    # excellent | good | fair | poor
+    tobacco_user = Column(Boolean, default=False)
+
+    # Lead metadata
+    source = Column(String, default="web_form")  # web_form | facebook | purchased | webhook | referral
+    source_campaign = Column(String)
+
+    # Status & assignment
+    status = Column(Enum(ConsumerLeadStatus), default=ConsumerLeadStatus.new)
+    assigned_to_prospect_id = Column(Integer, ForeignKey("prospects.id"), nullable=True)
+    assigned_at = Column(DateTime(timezone=True), nullable=True)
+
+    quality_score = Column(Integer, default=0)
+    notes = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    assigned_agent = relationship("Prospect", back_populates="consumer_leads")
 
 
 class QualificationSession(Base):

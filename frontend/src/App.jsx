@@ -1,7 +1,10 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { LayoutDashboard, Users, Calendar, TrendingUp, Bot, Shield, FileText, Bell } from 'lucide-react'
+import {
+  LayoutDashboard, Users, Calendar, TrendingUp, Bot,
+  Shield, FileText, Bell, Heart,
+} from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Prospects from './pages/Prospects'
 import Appointments from './pages/Appointments'
@@ -9,19 +12,30 @@ import Pipeline from './pages/Pipeline'
 import ProspectDetail from './pages/ProspectDetail'
 import Cases from './pages/Cases'
 import Queue from './pages/Queue'
-import { queue as queueApi } from './api'
+import LeadPool from './pages/LeadPool'
+import IntakeForm from './pages/IntakeForm'
+import ConsumerLeadForm from './pages/ConsumerLeadForm'
+import { queue as queueApi, leads as leadsApi } from './api'
 
 function Sidebar() {
   const { data: qMetrics } = useQuery({
     queryKey: ['queue-metrics'],
     queryFn: queueApi.metrics,
-    refetchInterval: 60_000, // refresh badge every minute
+    refetchInterval: 60_000,
+  })
+
+  const { data: leadMetrics } = useQuery({
+    queryKey: ['lead-metrics'],
+    queryFn: leadsApi.metrics,
+    refetchInterval: 60_000,
   })
 
   const pendingCount = qMetrics?.pending ?? 0
+  const newLeadsCount = leadMetrics?.new ?? 0
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/leads', icon: Heart, label: 'Lead Pool', badge: newLeadsCount },
     { to: '/prospects', icon: Users, label: 'Life Agents' },
     { to: '/cases', icon: FileText, label: 'Pending Cases' },
     { to: '/queue', icon: Bell, label: 'Follow-up Queue', badge: pendingCount },
@@ -68,7 +82,7 @@ function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-4 py-4 border-t border-slate-700">
+      <div className="px-4 py-4 border-t border-slate-700 space-y-2">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
             <Bot size={14} className="text-white" />
@@ -78,28 +92,59 @@ function Sidebar() {
             <p className="text-green-400 text-xs">Online · checks hourly</p>
           </div>
         </div>
+        <div className="flex gap-1.5">
+          <a
+            href="/intake"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-center text-xs text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 rounded px-2 py-1 transition-colors"
+          >
+            Agent Form
+          </a>
+          <a
+            href="/quote"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-center text-xs text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 rounded px-2 py-1 transition-colors"
+          >
+            Quote Form
+          </a>
+        </div>
       </div>
     </aside>
+  )
+}
+
+function AdminLayout() {
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-auto">
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/leads" element={<LeadPool />} />
+          <Route path="/prospects" element={<Prospects />} />
+          <Route path="/prospects/:id" element={<ProspectDetail />} />
+          <Route path="/cases" element={<Cases />} />
+          <Route path="/queue" element={<Queue />} />
+          <Route path="/appointments" element={<Appointments />} />
+          <Route path="/pipeline" element={<Pipeline />} />
+        </Routes>
+      </main>
+    </div>
   )
 }
 
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/prospects" element={<Prospects />} />
-            <Route path="/prospects/:id" element={<ProspectDetail />} />
-            <Route path="/cases" element={<Cases />} />
-            <Route path="/queue" element={<Queue />} />
-            <Route path="/appointments" element={<Appointments />} />
-            <Route path="/pipeline" element={<Pipeline />} />
-          </Routes>
-        </main>
-      </div>
+      <Routes>
+        {/* Public standalone forms — no sidebar */}
+        <Route path="/intake" element={<IntakeForm />} />
+        <Route path="/quote" element={<ConsumerLeadForm />} />
+        {/* Admin app */}
+        <Route path="/*" element={<AdminLayout />} />
+      </Routes>
     </BrowserRouter>
   )
 }

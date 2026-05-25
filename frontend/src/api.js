@@ -47,6 +47,19 @@ export const queue = {
   triggerCheck: () => api.post('/queue/check').then(r => r.data),
 }
 
+export const intake = {
+  agent: (data) => api.post('/intake/agent', data).then(r => r.data),
+}
+
+export const leads = {
+  list: (params) => api.get('/leads', { params }).then(r => r.data),
+  get: (id) => api.get(`/leads/${id}`).then(r => r.data),
+  create: (data) => api.post('/leads', data).then(r => r.data),
+  update: (id, data) => api.patch(`/leads/${id}`, data).then(r => r.data),
+  delete: (id) => api.delete(`/leads/${id}`),
+  metrics: () => api.get('/leads/metrics').then(r => r.data),
+}
+
 export const cases = {
   list: (params) => api.get('/cases', { params }).then(r => r.data),
   get: (id) => api.get(`/cases/${id}`).then(r => r.data),
